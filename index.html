@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa de Cobertura - The Brotherts (2km)</title>
+    <!-- Carregamento do Tailwind CSS para estilização rápida e responsiva -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Define a altura total da tela para o mapa */
+        #map {
+            width: 100%;
+            height: calc(100vh - 120px); /* Ajustado para dar espaço à legenda */
+            border-radius: 0.5rem; /* cantos arredondados */
+        }
+        .color-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 font-sans p-4">
+
+    <header class="mb-4 bg-white shadow-lg p-4 rounded-lg">
+        <h1 class="text-2xl font-bold text-indigo-700">Visualização de Cobertura - The Brothers Jiu Jitsu (Colorido por Bairro)</h1>
+        <p class="text-gray-600 mt-1">Cada raio de 2 km está colorido de acordo com o bairro ou cidade da academia.</p>
+        <div id="loading" class="mt-2 text-sm text-yellow-600 flex items-center">
+            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-yellow-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Carregando Google Maps...
+        </div>
+
+        <!-- Legenda de Cores -->
+        <div id="legend" class="mt-4 pt-3 border-t border-gray-100">
+            <h2 class="text-sm font-semibold text-gray-700 mb-2">Legenda por Área:</h2>
+            <div class="flex flex-wrap gap-x-4 gap-y-2 text-xs">
+                <!-- A legenda será preenchida dinamicamente pelo JavaScript abaixo (função createLegend) -->
+            </div>
+        </div>
+    </header>
+
+    <!-- Container do Mapa -->
+    <div id="map" class="shadow-xl"></div>
+
+    <script type="text/javascript">
+        let map;
+
+        // --- Mapeamento de Cores por Bairro/Cidade ---
+        const NEIGHBORHOOD_COLORS = {
+            "Boa Viagem": { stroke: "#4CAF50", fill: "#4CAF50", display: "Boa Viagem (Recife/PE)" },
+            "Ipsep": { stroke: "#FF9800", fill: "#FF9800", display: "Ipsep (Recife/PE)" },
+            "Afogados": { stroke: "#03A9F4", fill: "#03A9F4", display: "Afogados (Recife/PE)" },
+            "Vila Tamandaré": { stroke: "#9C27B0", fill: "#9C27B0", display: "Vila Tamandaré (Recife/PE)" },
+            "Jardim S. Paulo": { stroke: "#E91E63", fill: "#E91E63", display: "Jardim S. Paulo (Recife/PE)" },
+            "Ibura de Baixo": { stroke: "#FFC107", fill: "#FFC107", display: "Ibura de Baixo (Recife/PE)" },
+            "Artur Lundgren L": { stroke: "#00BCD4", fill: "#00BCD4", display: "Artur Lundgren L (Paulista/PE)" },
+            "Ouro Preto": { stroke: "#3F51B5", fill: "#3F51B5", display: "Ouro Preto (Ouro Preto/MG)" },
+            "Centro": { stroke: "#607D8B", fill: "#607D8B", display: "Centro (Ibiúna/SP)" },
+            "Barro": { stroke: "#795548", fill: "#795548", display: "Barro (Recife/PE)" },
+            "default": { stroke: "#000000", fill: "#000000", display: "Desconhecido" }
+        };
+
+        // --- Configuração das Coordenadas com Bairro/Cidade ---
+        const theBrothertsLocations = [
+            // Coordenadas corrigidas via busca de endereço:
+            { lat: -8.129373, lng: -34.901502, name: "The Brothers BJJ", bairro: "Boa Viagem", cidade: "Recife/PE" },
+            { lat: -8.113264, lng: -34.918928, name: "The Brothers Ipsep", bairro: "Ipsep", cidade: "Recife/PE" },
+            { lat: -8.077274, lng: -34.909062, name: "The Brothers Afogados", bairro: "Afogados", cidade: "Recife/PE" },
+            { lat: -8.093394, lng: -34.925000, name: "The Brothers Vila Tamandaré", bairro: "Vila Tamandaré", cidade: "Recife/PE" },
+            { lat: -8.086383, lng: -34.939023, name: "The Brothers Jardim S. Paulo", bairro: "Jardim S. Paulo", cidade: "Recife/PE" },
+            { lat: -8.114777, lng: -34.936608, name: "The Brothers Ibura", bairro: "Ibura de Baixo", cidade: "Recife/PE" },
+            { lat: -7.935123, lng: -34.894767, name: "The Brothers BJJ BRASIL", bairro: "Artur Lundgren L", cidade: "Paulista/PE" },
+            
+            // Locais de outras cidades (Podem precisar de correção manual na Lat/Lng)
+            { lat: -20.3895368, lng: -43.5032012, name: "Academia THE BROTHERS", bairro: "Ouro Preto", cidade: "Ouro Preto/MG" },
+            { lat: -23.6557566, lng: -47.2132838, name: "The brothers studio", bairro: "Centro", cidade: "Ibiúna/SP" },
+            { lat: -8.1396957, lng: -34.9083819, name: "The Brothers Rua Caviana", bairro: "Barro", cidade: "Recife/PE" }, 
+        ];
+
+        /**
+         * Função que preenche a legenda no cabeçalho.
+         */
+        function createLegend() {
+            const legendContainer = document.querySelector('#legend > div');
+            
+            for (const key in NEIGHBORHOOD_COLORS) {
+                if (key !== "default") {
+                    const colorData = NEIGHBORHOOD_COLORS[key];
+                    const item = document.createElement('div');
+                    item.className = 'flex items-center';
+                    item.innerHTML = `
+                        <div class="color-dot" style="background-color: ${colorData.fill};"></div>
+                        <span>${colorData.display}</span>
+                    `;
+                    legendContainer.appendChild(item);
+                }
+            }
+        }
+
+        /**
+         * Função de callback chamada pela API do Google Maps para inicializar o mapa.
+         */
+        function initMap() {
+            // Esconde a mensagem de carregamento e cria a legenda
+            document.getElementById('loading').classList.add('hidden');
+            createLegend();
+            
+            // 1. Inicializa o mapa
+            const initialCenter = { lat: -18.5, lng: -45.0 }; 
+            const initialZoom = 5; 
+            
+            map = new google.maps.Map(document.getElementById("map"), {
+                center: initialCenter,
+                zoom: initialZoom,
+                mapId: "DEMO_MAP_ID" 
+            });
+
+            // 2. Itera sobre as coordenadas e desenha o círculo de 2km em cada ponto
+            theBrothertsLocations.forEach(location => {
+                const center = { lat: location.lat, lng: location.lng };
+                
+                // Obtém os dados de cor baseado no bairro
+                const colorData = NEIGHBORHOOD_COLORS[location.bairro] || NEIGHBORHOOD_COLORS["default"];
+
+                // Cria o objeto Circle: 'radius' é definido em metros (2000 m = 2 km).
+                const cityCircle = new google.maps.Circle({
+                    strokeColor: colorData.stroke,
+                    strokeOpacity: 0.8,
+                    strokeWeight: 2,
+                    fillColor: colorData.fill,
+                    fillOpacity: 0.35,
+                    map,
+                    center: center,
+                    radius: 2000,
+                });
+
+                // Adiciona um Marcador no centro do círculo (também colorido)
+                const marker = new google.maps.Marker({
+                    position: center,
+                    map,
+                    title: `${location.name} - ${location.bairro}`,
+                    // Adiciona um círculo como ícone para combinar com a cor
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 6,
+                        fillColor: colorData.fill,
+                        fillOpacity: 1,
+                        strokeWeight: 0,
+                    }
+                });
+                
+                // Adiciona uma janela de informação ao clicar
+                const infoWindow = new google.maps.InfoWindow({
+                    content: `
+                        <div class="text-sm">
+                            <h3 class="font-bold text-indigo-800">${location.name}</h3>
+                            <p class="mb-1 text-gray-700">Bairro: <span class="font-semibold">${location.bairro} (${location.cidade})</span></p>
+                            <p>Raio de Cobertura: 2 km</p>
+                        </div>
+                    `,
+                });
+
+                marker.addListener("click", () => {
+                    infoWindow.open({
+                        anchor: marker,
+                        map,
+                    });
+                });
+            });
+
+            // 3. Ajusta o zoom do mapa para incluir todos os pontos
+            const bounds = new google.maps.LatLngBounds();
+            theBrothertsLocations.forEach(loc => {
+                bounds.extend(new google.maps.LatLng(loc.lat, loc.lng));
+            });
+            map.fitBounds(bounds);
+        }
+
+        // --- Tratamento de Erro do Google Maps ---
+        function gm_authFailure() {
+            // Mensagem de erro para o caso de chave API inválida
+            document.getElementById('loading').innerHTML = 'ERRO: Falha na autenticação da API do Google Maps. Por favor, insira uma chave API válida no script tag ao final do arquivo.';
+            document.getElementById('loading').classList.remove('text-yellow-600', 'animate-spin', 'flex');
+            document.getElementById('loading').classList.add('text-red-600', 'font-bold', 'block');
+        }
+
+    </script>
+
+    <!-- 
+        ATENÇÃO: Este erro é geralmente causado pela falta de uma chave API válida 
+        do Google Maps, ou se o faturamento (billing) não estiver ativado no seu 
+        projeto do Google Cloud. 
+        Você DEVE substituir o "key=" vazio pela sua chave API.
+    -->
+    <script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=&callback=initMap&v=weekly">
+    </script>
+</body>
+</html>

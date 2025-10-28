@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mapa de Cobertura - The Brotherts (2km)</title>
+    <title>Mapa de Cobertura - The Brotherts (1.5km)</title>
     <!-- Carregamento do Tailwind CSS para estilização rápida e responsiva -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -43,7 +43,7 @@
     <div class="w-full max-w-7xl">
         <header class="mb-6 bg-primary-dark shadow-xl p-6 rounded-xl">
             <h1 class="text-3xl font-extrabold text-white mb-1">Visualização de Cobertura - The Brothers Jiu Jitsu</h1>
-            <p class="text-gray-300">Áreas de 2 km em torno das academias, coloridas por região para fácil identificação.</p>
+            <p class="text-gray-300">Áreas de 1.5 km em torno das academias, coloridas por região para fácil identificação.</p>
             
             <div id="loading" class="mt-3 text-sm text-yellow-400 flex items-center">
                 <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -144,14 +144,14 @@
                 zoomControl: true,
             });
 
-            // 2. Itera sobre as coordenadas e desenha o círculo de 2km em cada ponto
+            // 2. Itera sobre as coordenadas e desenha o círculo de 1.5km em cada ponto
             theBrothertsLocations.forEach(location => {
                 const center = { lat: location.lat, lng: location.lng };
                 
                 // Obtém os dados de cor baseado no bairro
                 const colorData = NEIGHBORHOOD_COLORS[location.bairro] || NEIGHBORHOOD_COLORS["default"];
 
-                // Cria o objeto Circle: 'radius' é definido em metros (2000 m = 2 km).
+                // Cria o objeto Circle: 'radius' é definido em metros (1500 m = 1.5 km).
                 const cityCircle = new google.maps.Circle({
                     strokeColor: colorData.stroke,
                     strokeOpacity: 0.8,
@@ -160,7 +160,7 @@
                     fillOpacity: 0.3,
                     map,
                     center: center,
-                    radius: 2000,
+                    radius: 1500, // Alterado de 2000 para 1500 metros
                 });
 
                 // Adiciona um Marcador no centro do círculo (também colorido)
@@ -185,7 +185,7 @@
                         <div class="text-sm p-1">
                             <h3 class="font-bold text-primary-dark">${location.name}</h3>
                             <p class="mb-1 text-gray-700">Bairro: <span class="font-semibold">${location.bairro} (${location.cidade})</span></p>
-                            <p class="text-xs text-gray-500">Raio de Cobertura: 2 km</p>
+                            <p class="text-xs text-gray-500">Raio de Cobertura: 1.5 km</p>
                         </div>
                     `,
                 });
